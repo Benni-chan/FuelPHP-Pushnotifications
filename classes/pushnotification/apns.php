@@ -8,7 +8,7 @@
  * @author     Benjamin Waller
  * @license    GPLv3
  * @copyright  2013 Benjamin Waller
- * @link       http://github.com/Benni-chan/
+ * @link       https://github.com/Benni-chan/FuelPHP-Pushnotifications
  */
 
  #  THIS IS BASED ON
