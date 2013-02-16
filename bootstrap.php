@@ -1,14 +1,16 @@
 <?php
 /**
- * Fuel is a fast, lightweight, community driven PHP5 framework.
+ * Pushnotification is a package for FuelPHP to send pushnotifications
+ * to smartphones.
  *
- * @package    Pushnotification
+ * @package    pushnotification
  * @version    1.0
  * @author     Benjamin Waller
- * @license    MIT License
- * @copyright  2010 - 2013 Fuel Development Team
- * @link       http://fuelphp.com
+ * @license    GPLv3
+ * @copyright  2013 Benjamin Waller
+ * @link       https://github.com/Benni-chan/FuelPHP-Pushnotifications
  */
+
 
 
 Autoloader::add_core_namespace('Pushnotification');
