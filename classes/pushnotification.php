@@ -54,11 +54,11 @@ class Pushnotification
 
 		$pushnotification = new $class(null);
 
-		#if ($service !== null)
-		#{
-		#	// Set service when given
-		#	$service and $pushnotification->service = $service;
-		#}
+		if ($service !== null)
+		{
+			// Set service when given
+			$service and $pushnotification->service = $service;
+		}
 
 		return $pushnotification;
 	}

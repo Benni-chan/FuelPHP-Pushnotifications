@@ -39,6 +39,7 @@
 namespace Pushnotification;
 
 class ApnsConfigError extends \FuelException {}
+class ApnsConnectionError extends \FuelException {}
 
 class Pushnotification_Apns
 {
@@ -48,16 +49,16 @@ class Pushnotification_Apns
 	
 	
 		protected $server;
-		protected $keyCertFilePath;
+		protected $key_cert_file_path;
 		protected $passphrase;
-		protected $pushStream;
-		protected $feedbackStream;
+		protected $push_stream;
+		protected $feedback_stream;
 		protected $timeout;
-		protected $idCounter = 0;
+		protected $id_counter = 0;
 		protected $expiry;
-		protected $allowReconnect = true;
-		protected $additionalData = array();
-		protected $apnResonses = array(
+		protected $allow_reconnect = true;
+		protected $additional_data = array();
+		protected $apn_resonses = array(
 			0 => 'No errors encountered',
 			1 => 'Processing error',
 			2 => 'Missing device token',
@@ -73,7 +74,7 @@ class Pushnotification_Apns
 		private $connection_start;
 	
 		public $error;
-		public $payloadMethod = 'simple';
+		public $payload_method = 'simple';
 	
 		/**
 		* Connects to the server with the certificate and passphrase
@@ -83,21 +84,19 @@ class Pushnotification_Apns
 		protected function connect($server) {
 
 			$ctx = stream_context_create();
-			stream_context_set_option($ctx, 'ssl', 'local_cert', $this->keyCertFilePath);
+			stream_context_set_option($ctx, 'ssl', 'local_cert', $this->key_cert_file_path);
 			stream_context_set_option($ctx, 'ssl', 'passphrase', $this->passphrase);
-
+			
 			$stream = stream_socket_client($server, $err, $errstr, $this->timeout, STREAM_CLIENT_CONNECT|STREAM_CLIENT_PERSISTENT, $ctx);
 			#log_message('debug',"APN: Maybe some errors: $err: $errstr");
-		
-		
+			
+			
 			if (!$stream) {
 			
 				if ($err)
-					#show_error("APN Failed to connect: $err $errstr");
-					echo ("APN Failed to connect: $err $errstr");
+					throw new ApnsConnectionError("APN Failed to connect: $err $errstr");
 				else
-					#show_error("APN Failed to connect: Something wrong with context");
-					echo("APN Failed to connect: Something wrong with context");
+					throw new ApnsConnectionError("APN Failed to connect: Something wrong with context");
 				
 				return false;
 			}
@@ -118,14 +117,14 @@ class Pushnotification_Apns
 		* @param <string> $sound
 		* @return <string>
 		*/
-		protected function generatePayload($message, $badge = NULL, $sound = NULL) {
+		protected function generate_payload($message, $badge = NULL, $sound = NULL) {
 
 		   $body = array();
 
 		   // additional data
-				if (is_array($this->additionalData) && count($this->additionalData))
+				if (is_array($this->additional_data) && count($this->additional_data))
 				{
-					$body = $this->additionalData;
+					$body = $this->additional_data;
 				}
 	   
 			//message
@@ -144,7 +143,7 @@ class Pushnotification_Apns
 				
 
 		   $payload = json_encode($body);
-		   #log_message('debug',"APN: generatePayload '$payload'");
+		   #log_message('debug',"APN: generate_payload '$payload'");
 		   return $payload;
 		}
 	
@@ -153,24 +152,24 @@ class Pushnotification_Apns
 		/**
 		 * Writes the contents of payload to the file stream
 		 * 
-		 * @param <string> $deviceToken
+		 * @param <string> $device_token
 		 * @param <string> $payload
 		 */
-		protected function sendPayloadSimple($deviceToken, $payload){
+		protected function send_payload_simple($device_token, $payload){
 
-			$this->idCounter++;		
+			$this->id_counter++;		
 
-			#log_message('debug',"APN: sendPayloadSimple to '$deviceToken'");
+			#log_message('debug',"APN: send_payload_simple to '$device_token'");
 
 			$msg = chr(0) 									// command
 				. pack('n',32)									// token length
-				. pack('H*', $deviceToken)						// device token
+				. pack('H*', $device_token)						// device token
 				. pack('n',strlen($payload))					// payload length
 				. $payload;										// payload
 		
 			#log_message('debug',"APN: payload: '$msg'");
 			#log_message('debug',"APN: payload length: '".strlen($msg)."'");
-			$result = fwrite($this->pushStream, $msg, strlen($msg));
+			$result = fwrite($this->push_stream, $msg, strlen($msg));
 		
 			if ($result)
 				return true;
@@ -182,44 +181,44 @@ class Pushnotification_Apns
 		/**
 		 * Writes the contents of payload to the file stream with enhanced api (expiry, debug)
 		 * 
-		 * @param <string> $deviceToken
+		 * @param <string> $device_token
 		 * @param <string> $payload
 		 */
-		protected function sendPayloadEnhance($deviceToken, $payload, $expiry = 86400) {
+		protected function send_payload_enhance($device_token, $payload, $expiry = 86400) {
 		
-			if (!is_resource($this->pushStream))
-				$this->reconnectPush();
+			if (!is_resource($this->push_stream))
+				$this->reconnect_push();
 		
 		
-			$this->idCounter++;		
+			$this->id_counter++;
 
-			#log_message('debug',"APN: sendPayloadEnhance to '$deviceToken'");
+			#log_message('debug',"APN: send_payload_enhance to '$device_token'");
 
 			$msg = chr(1)										// command
 				. pack("N",time())								// identifier
 				. pack("N",time() + $expiry)					// expiry
 				. pack('n',32)									// token length
-				. pack('H*', $deviceToken)						// device token
+				. pack('H*', $device_token)						// device token
 				. pack('n',strlen($payload))					// payload length
 				. $payload;
 			
-			$response = @unpack('Ccommand/Nidentifier/Nexpiry/ntoken_length/H*device_token/npayload_length', $msg);// payload
+			#$response = @unpack('Ccommand/Nidentifier/Nexpiry/ntoken_length/H*device_token/npayload_length', $msg);// payload
 		
 			#log_message('debug',"APN: unpack: '".print_r($response,true)."'");
 			#log_message('debug',"APN: payload: '$msg'");
 			#log_message('debug',"APN: payload length: '".strlen($msg)."'");
-			$result = fwrite($this->pushStream, $msg, strlen($msg));
+			$result = fwrite($this->push_stream, $msg, strlen($msg));
 		
 			if ($result)
 			{
-				return $this->getPayloadStatuses();
+				return $this->get_payload_statuses();
 			}
 	
 			return false;
 		}
 	
 	
-		protected function timeoutSoon($left_seconds = 5)
+		protected function timeout_soon($left_seconds = 5)
 		{
 			$t = ( (round(microtime(true) - $this->connection_start) >= ($this->timeout - $left_seconds)));
 			return (bool)$t;
@@ -235,21 +234,21 @@ class Pushnotification_Apns
 		 * Connects to the APNS server with a certificate and a passphrase
 		 *
 		 * @param <string> $server
-		 * @param <string> $keyCertFilePath
+		 * @param <string> $key_cert_file_path
 		 * @param <string> $passphrase
 		 */
 		function __construct() {
 			
-			$this->pushServer = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.push_gateway', '') : \Config::get('pushnotification.Pushnotification_Apns.production.push_gateway', '');
-			$this->feedbackServer = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.feedback_gateway', '') : \Config::get('pushnotification.Pushnotification_Apns.production.feedback_gateway', '');
+			$this->push_server = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.push_gateway', '') : \Config::get('pushnotification.Pushnotification_Apns.production.push_gateway', '');
+			$this->feedback_server = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.feedback_gateway', '') : \Config::get('pushnotification.Pushnotification_Apns.production.feedback_gateway', '');
 		
-			$this->keyCertFilePath = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.certificate', '') : \Config::get('pushnotification.Pushnotification_Apns.production.certificate', '');
+			$this->key_cert_file_path = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.certificate', '') : \Config::get('pushnotification.Pushnotification_Apns.production.certificate', '');
 			$this->passphrase = \Config::get('pushnotification.Pushnotification_Apns.use_sandbox', 'true') ? \Config::get('pushnotification.Pushnotification_Apns.sandbox.certificate_passphrase', '') : \Config::get('pushnotification.Pushnotification_Apns.production.certificate_passphrase', '');
 			
 			$this->timeout = \Config::get('pushnotification.Pushnotification_Apns.production.timeout', '80');
 			$this->expiry = \Config::get('pushnotification.Pushnotification_Apns.production.expiry', '86400');
 			
-			if(!file_exists($this->keyCertFilePath))
+			if(!file_exists($this->key_cert_file_path))
 			{
 				throw new ApnsConfigError('APN Failed to connect: APN Permission file not found');
 			}
@@ -258,43 +257,43 @@ class Pushnotification_Apns
 		/**
 		 * Public connector to push service
 		 */
-		public function connectToPush()
+		public function connect_to_push()
 		{
-			if (!$this->pushStream or !is_resource($this->pushStream))
+			if (!$this->push_stream or !is_resource($this->push_stream))
 			{
-				#log_message('debug',"APN: connectToPush");
+				#log_message('debug',"APN: connect_to_push");
 		
-				$this->pushStream = $this->connect($this->pushServer);
+				$this->push_stream = $this->connect($this->push_server);
 			
-				if ($this->pushStream)
+				if ($this->push_stream)
 				{
 					$this->connection_start = microtime(true);
-					//stream_set_blocking($this->pushStream,0);
+					//stream_set_blocking($this->push_stream,0);
 				}
 			}
 		
-			return $this->pushStream;
+			return $this->push_stream;
 		}
 	
 		/**
 		 * Public connector to feedback service
 		 */
-		public function connectToFeedback()
+		public function connect_to_feedback()
 		{
-			#log_message('info',"APN: connectToFeedback");
-			return $this->feedbackStream = $this->connect($this->feedbackServer);
+			#log_message('info',"APN: connect_to_feedback");
+			return $this->feedback_stream = $this->connect($this->feedback_server);
 		}
 	
 		/**
 		 * Public diconnector to push service
 		 */
-		function disconnectPush()
+		function disconnect_push()
 		{
-			#log_message('debug',"APN: disconnectPush");
-			if ($this->pushStream && is_resource($this->pushStream))
+			#log_message('debug',"APN: disconnect_push");
+			if ($this->push_stream && is_resource($this->push_stream))
 			{
 				$this->connection_start = 0;
-				return @fclose($this->pushStream);
+				return @fclose($this->push_stream);
 			}
 			else
 				return true;
@@ -303,20 +302,20 @@ class Pushnotification_Apns
 		/**
 		 * Public disconnector to feedback service
 		 */
-		function disconnectFeedback()
+		function disconnect_feedback()
 		{
-			#log_message('info',"APN: disconnectFeedback");
-			if ($this->feedbackStream && is_resource($this->feedbackStream))
-				return @fclose($this->feedbackStream);
+			#log_message('info',"APN: disconnect_feedback");
+			if ($this->feedback_stream && is_resource($this->feedback_stream))
+				return @fclose($this->feedback_stream);
 			else
 				return true;
 		}
 	
-		function reconnectPush()
+		function reconnect_push()
 		{
-			$this->disconnectPush();
+			$this->disconnect_push();
 				
-			if ($this->connectToPush())
+			if ($this->connect_to_push())
 			{
 				#log_message('debug',"APN: reconnect");
 				return true;
@@ -328,13 +327,13 @@ class Pushnotification_Apns
 			}
 		}
 	
-		function tryReconnectPush()
+		function try_reconnect_push()
 		{
-			if ($this->allowReconnect)
+			if ($this->allow_reconnect)
 			{
-				if($this->timeoutSoon())
+				if($this->timeout_soon())
 				{
-					return $this->reconnectPush();
+					return $this->reconnect_push();
 				}
 			}
 		
@@ -345,41 +344,41 @@ class Pushnotification_Apns
 		/**
 		 * Sends a message to device
 		 * 
-		 * @param <string> $deviceToken
+		 * @param <string> $device_token
 		 * @param <string> $message
 		 * @param <int> $badge
 		 * @param <string> $sound
 		 */
-		public function sendMessage($deviceToken, $message, $badge = NULL, $sound = NULL, $expiry = '')
+		public function send_message($device_token, $message, $badge = NULL, $sound = NULL, $expiry = '')
 		{
 			$this->error = '';
 		
-			if (!ctype_xdigit($deviceToken))
+			if (!ctype_xdigit($device_token))
 			{
-				#log_message('debug',"APN: Error - '$deviceToken' token is invalid. Provided device token contains not hexadecimal chars");
+				#log_message('debug',"APN: Error - '$device_token' token is invalid. Provided device token contains not hexadecimal chars");
 				$this->error = 'Invalid device token. Provided device token contains not hexadecimal chars';
 				return false;
 			}
 		
 			// restart the connection
-			$this->tryReconnectPush();
+			$this->try_reconnect_push();
 		
-			#log_message('info',"APN: sendMessage '$message' to $deviceToken");
+			#log_message('info',"APN: send_message '$message' to $device_token");
 		
 			//generate the payload
-			$payload = $this->generatePayload($message, $badge, $sound);
+			$payload = $this->generate_payload($message, $badge, $sound);
 
-			$deviceToken = str_replace(' ', '', $deviceToken);
+			$device_token = str_replace(' ', '', $device_token);
 		
 			//send payload to the device.
-			if ($this->payloadMethod == 'simple')
-				$this->sendPayloadSimple($deviceToken, $payload);
+			if ($this->payload_method == 'simple')
+				$this->send_payload_simple($device_token, $payload);
 			else
 			{
 				if (!$expiry)
 					$expiry = $this->expiry;
 			
-				return $this->sendPayloadEnhance($deviceToken, $payload, $expiry);
+				return $this->send_payload_enhance($device_token, $payload, $expiry);
 			}
 		}
 
@@ -387,38 +386,38 @@ class Pushnotification_Apns
 		/**
 		 * Writes the contents of payload to the file stream
 		 * 
-		 * @param <string> $deviceToken
+		 * @param <string> $device_token
 		 * @param <string> $payload
 		 * @return <bool> 
 		 */
-		function getPayloadStatuses()
+		function get_payload_statuses()
 		{
 		
-			$read = array($this->pushStream);
+			$read = array($this->push_stream);
 			$null = null;
-			$changedStreams = stream_select($read, $null, $null, 0, 2000000);
+			$changed_streams = stream_select($read, $null, $null, 0, 2000000);
 
-			if ($changedStreams === false)
+			if ($changed_streams === false)
 			{    
 				#log_message('error',"APN Error: Unabled to wait for a stream availability");
 			}
-			elseif ($changedStreams > 0)
+			elseif ($changed_streams > 0)
 			{
 			
-				$responseBinary = fread($this->pushStream, 6);
-				if ($responseBinary !== false || strlen($responseBinary) == 6) {
+				$response_binary = fread($this->push_stream, 6);
+				if ($response_binary !== false || strlen($response_binary) == 6) {
 				
-					if (!$responseBinary)
+					if (!$response_binary)
 						return true;
 				
-					$response = @unpack('Ccommand/Cstatus_code/Nidentifier', $responseBinary);
+					$response = @unpack('Ccommand/Cstatus_code/Nidentifier', $response_binary);
 				
 					#log_message('debug','APN: debugPayload response - '.print_r($response,true));
 				
 					if ($response && $response['status_code'] > 0)
 					{
-						#log_message('error','APN: debugPayload response - status_code:'.$response['status_code'].' => '.$this->apnResonses[$response['status_code']]);
-						$this->error = $this->apnResonses[$response['status_code']];
+						#log_message('error','APN: debugPayload response - status_code:'.$response['status_code'].' => '.$this->apn_resonses[$response['status_code']]);
+						$this->error = $this->apn_resonses[$response['status_code']];
 						return false;
 					}
 					else
@@ -430,12 +429,12 @@ class Pushnotification_Apns
 				}
 				else
 				{
-					#log_message('debug',"APN: responseBinary = $responseBinary");
+					#log_message('debug',"APN: response_binary = $response_binary");
 					return false;
 				}
 			}
 			else
-				#log_message('debug',"APN: No streams to change, $changedStreams");
+			{}#log_message('debug',"APN: No streams to change, $changed_streams");
 		
 			return true;
 		}
@@ -447,22 +446,22 @@ class Pushnotification_Apns
 		*
 		* @return <array>
 		*/
-		public function getFeedbackTokens() {
+		public function get_feedback_tokens() {
 	    
-			#log_message('debug',"APN: getFeedbackTokens {$this->feedbackStream}");
-			$this->connectToFeedback();
+			#log_message('debug',"APN: get_feedback_tokens {$this->feedback_stream}");
+			$this->connect_to_feedback();
 		
 		    $feedback_tokens = array();
 		    //and read the data on the connection:
-		    while(!feof($this->feedbackStream)) {
-		        $data = fread($this->feedbackStream, 38);
+		    while(!feof($this->feedback_stream)) {
+		        $data = fread($this->feedback_stream, 38);
 		        if(strlen($data)) {	   
 		        	//echo $data;     	
 		            $feedback_tokens[] = unpack("N1timestamp/n1length/H*devtoken", $data);
 		        }
 		    }
 		
-			$this->disconnectFeedback();
+			$this->disconnect_feedback();
 		
 		    return $feedback_tokens;
 		}
@@ -474,7 +473,7 @@ class Pushnotification_Apns
 		* @param <array> $data
 		* @return <array>
 		*/
-		public function setData($data)
+		public function set_data($data)
 		{
 			if (!is_array($data))
 			{
@@ -488,7 +487,7 @@ class Pushnotification_Apns
 				return false;
 			}
 		
-			return $this->additionalData = $data;
+			return $this->additional_data = $data;
 		}
 	
 
@@ -497,7 +496,7 @@ class Pushnotification_Apns
 		* Closes the stream
 		*/
 		function __destruct(){
-			$this->disconnectPush();
-			$this->disconnectFeedback();
+			$this->disconnect_push();
+			$this->disconnect_feedback();
 		}
 }

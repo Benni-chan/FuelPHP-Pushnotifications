@@ -54,12 +54,10 @@ class Pushnotification_Gcm
 		$this->api_send_address = \Config::get('pushnotification.Pushnotification_Gcm.send_address', '');
 		
 		if (!$this->api_key) {
-			\Log::error('GCM: Needed API Key');
 			throw new GcmConfigError('GCM: Needed API Key');
 		}
 		
 		if (!$this->api_send_address) {
-			\Log::error('GCM: Needed API Send Address');
 			throw new GcmConfigError('GCM: Needed API Send Address');
 		}
 	}
