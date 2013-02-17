@@ -1,6 +1,6 @@
 # FuelPHP Push Notification Package.
 
-A full fledged push notification class for Fuel. Send notifications using Google Cloud Messaging or Apple Push Notification Service.
+A full fledged push notification class for FuelPHP. Send notifications using Google Cloud Messaging or Apple Push Notification Service.
 
 # Summary
 
