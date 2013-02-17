@@ -69,7 +69,7 @@ class Pushnotification_Gcm
 	* @param <array> $data
 	* @return <array>
 	*/
-	public function setTtl($ttl = '')
+	public function set_ttl($ttl = '')
 	{
 		if (!$ttl)
 			unset($this->payload['time_to_live']);
@@ -83,7 +83,7 @@ class Pushnotification_Gcm
 	 *
 	 * @param <string> $message
 	 */
-	public function setMessage($message = '') {
+	public function set_message($message = '') {
 		
 		$this->message = $message;
 		$this->payload['data']['message'] = $message;
@@ -96,7 +96,7 @@ class Pushnotification_Gcm
 	 *
 	 * @param <string> $data
 	 */
-	public function setData($data = array()) {
+	public function set_data($data = array()) {
 
 		$this->payload['data'] = $data;
 		
@@ -111,7 +111,7 @@ class Pushnotification_Gcm
 	 *
 	 * @param <string> $group
 	 */
-	public function setGroup($group = '') {
+	public function set_group($group = '') {
 		
 		if (!$group)
 			unset($this->payload['collapse_key']);
@@ -125,7 +125,7 @@ class Pushnotification_Gcm
 	 *
 	 * @param <string> $group
 	 */
-	public function addRecepient($registrationId) {
+	public function add_recepient($registrationId) {
 		
 		$this->payload['registration_ids'][] = $registrationId;
 	}
@@ -136,7 +136,7 @@ class Pushnotification_Gcm
 	 *
 	 * @param <string> $group
 	 */
-	public function setRecepients($registrationIds) {
+	public function set_recepients($registrationIds) {
 		
 		$this->payload['registration_ids'] = $registrationIds;
 	}
@@ -145,7 +145,7 @@ class Pushnotification_Gcm
 	/**
 	 * Clearing group of messages
 	 */
-	public function clearRecepients() {
+	public function clear_recepients() {
 		
 		$this->payload['registration_ids'] = array();
 	}
@@ -204,32 +204,32 @@ class Pushnotification_Gcm
 
 		
 
-		return $this->parseResponse();
+		return $this->parse_response();
 	}
 	
 	
-	protected function parseResponse()
+	protected function parse_response()
 	{
 		if ($this->response_info['http_code'] == 200)
 		{			
 			$response = explode("\n",$this->response_data);
-			$responseBody = json_decode($response[count($response)-1]);
+			$response_body = json_decode($response[count($response)-1]);
 			
-			if ($responseBody->success && !$responseBody->failure)
+			if ($response_body->success && !$response_body->failure)
 			{
 				$message = 'All messages were sent successfully';
 				$error = 0;
 				$code = 0;
 			}
-			elseif ($responseBody->success && $responseBody->failure)
+			elseif ($response_body->success && $response_body->failure)
 			{
-				$message = $responseBody->success.' of '.($responseBody->success+$responseBody->failure).' messages were sent successfully';
+				$message = $response_body->success.' of '.($response_body->success+$response_body->failure).' messages were sent successfully';
 				$error = 1;
 				$code = 1;
 			}
-			elseif (!$responseBody->success && $responseBody->failure)
+			elseif (!$response_body->success && $response_body->failure)
 			{
-				$message = 'No messages cannot be sent. '.$responseBody->results[0]->error;
+				$message = 'No messages cannot be sent. '.$response_body->results[0]->error;
 				$error = 1;
 				$code = 2;
 			}
@@ -241,7 +241,7 @@ class Pushnotification_Gcm
 			);
 			
 			$this->messages_statuses = array();
-			foreach($responseBody->results as $key => $result)
+			foreach($response_body->results as $key => $result)
 			{
 				if (isset($result->error) && $result->error)
 				{

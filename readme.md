@@ -10,24 +10,25 @@ A full fledged push notification class for Fuel. Send notifications using Google
 # Usage
 
 	gcm = Pushnotification::forge('gcm');
-	$gcm->setMessage('Test message '.date('d.m.Y H:i:s'));
+	$gcm->set_message('Test message '.date('d.m.Y H:i:s'));
 	
-	$gcm->addRecepient(''); // you can also use an array (up to 1000 devices per send)
-
+	$gcm->add_recepient('ID');
+	// $gcm->set_recepients($array); // you can also use an array (up to 1000 devices per send)
+	
 	// set additional data
-	$gcm->setData(array(
+	$gcm->set_data(array(
 		'some_key' => 'some_val'
 	));
 
 	// also you can add time to live
-	//    $gcm->setTtl(500);
+	//    $gcm->set_ttl(500);
 	// and unset in further
-	$gcm->setTtl(false);
+	$gcm->set_ttl(false);
 
 	// set group for messages if needed
-	//    $this->gcm->setGroup('Test');
+	//    $gcm->set_group('Test');
 	// or set to default
-	$gcm->setGroup(false);
+	$gcm->set_group(false);
 
 	// then send
 	if ($gcm->send())
@@ -42,23 +43,23 @@ A full fledged push notification class for Fuel. Send notifications using Google
 	
 	
 	$apns = Pushnotification::forge('apns');
-	//$apns->payloadMethod = 'enhance'; // you can turn on this method for debuggin purpose
-	$apns->payloadMethod = 'simple';
-	$apns->connectToPush();
+	//$apns->payload_method = 'enhance'; // you can turn on this method for debuggin purpose
+	$apns->payload_method = 'simple';
+	$apns->connect_to_push();
 		
 	// adding custom variables to the notification
-	$apns->setData(array( 'someKey' => true ));
+	$apns->set_data(array( 'someKey' => true ));
 		
 	$device_token = "";
 		
-	$send_result = $apns->sendMessage($device_token, 'Test notif #1 (TIME:'.date('H:i:s').')', 0, 'default'  );
+	$send_result = $apns->send_message($device_token, 'Test notif #1 (TIME:'.date('H:i:s').')', 0, 'default'  );
 			
 	if($send_result)
 		echo "apns send successful";
 	else
 		echo $apns->error;
 		
-	$apns->disconnectPush();
+	$apns->disconnect_push();
 
 
 # Exceptions
